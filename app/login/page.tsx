@@ -40,8 +40,15 @@ function LoginForm() {
       
       // Rediriger immédiatement après connexion réussie
       const redirect = searchParams.get('redirect') || '/dashboard'
+
+      // Navigation client standard
       router.push(redirect)
-      
+
+      // Fallback pour la prod (Vercel) si la navigation Next ne se fait pas immédiatement
+      if (typeof window !== 'undefined') {
+        window.location.href = redirect
+      }
+
       // Ne pas réinitialiser loading pour garder l'état de chargement pendant la redirection
     } catch (err: any) {
       showToast(err.message || 'Une erreur est survenue', 'error')

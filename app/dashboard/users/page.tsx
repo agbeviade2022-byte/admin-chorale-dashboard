@@ -16,11 +16,16 @@ export default function UsersPage() {
     const loadUsers = async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, chorales(nom)')
         .order('created_at', { ascending: false })
       
       if (!error && data) {
-        setUsers(data)
+        // Transformer pour ajouter chorale_nom
+        const usersWithChorale = data.map(u => ({
+          ...u,
+          chorale_nom: u.chorales?.nom || null
+        }))
+        setUsers(usersWithChorale)
       }
     }
     

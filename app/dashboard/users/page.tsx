@@ -1,33 +1,31 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import UsersClient from './UsersClient'
 
 export default function UsersPage() {
+  const { user } = useAuth()
   const [users, setUsers] = useState<any[]>([])
 
   useEffect(() => {
-    async function loadUsers() {
+    // Attendre d'avoir un user avant de charger
+    if (!user) return
+    
+    const loadUsers = async () => {
       const { data, error } = await supabase
-        .from('users_with_emails')
+        .from('profiles')
         .select('*')
-        .limit(100)
+        .order('created_at', { ascending: false })
       
       if (!error && data) {
         setUsers(data)
-      } else {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100)
-        
-        setUsers(profiles || [])
       }
     }
+    
     loadUsers()
-  }, [])
+  }, [user])
 
-  // Affichage IMMÉDIAT - pas de loading
   return <UsersClient initialUsers={users} />
 }

@@ -28,29 +28,28 @@ function LoginForm() {
     setLoading(true)
 
     try {
+      console.log('[Login] handleLogin start', { email })
       const { error } = await signIn(email, password)
 
       if (error) {
+        console.error('[Login] signIn returned error', error)
         showToast(error.message || 'Erreur de connexion', 'error')
         setLoading(false)
         return
       }
 
+      console.log('[Login] signIn success, redirecting...')
       showToast('Connexion réussie !', 'success')
       
       // Rediriger immédiatement après connexion réussie
       const redirect = searchParams.get('redirect') || '/dashboard'
 
-      // Navigation client standard
-      router.push(redirect)
-
-      // Fallback pour la prod (Vercel) si la navigation Next ne se fait pas immédiatement
-      if (typeof window !== 'undefined') {
-        window.location.href = redirect
-      }
+      // Navigation client immédiate vers le dashboard
+      router.replace(redirect)
 
       // Ne pas réinitialiser loading pour garder l'état de chargement pendant la redirection
     } catch (err: any) {
+      console.error('[Login] handleLogin catch', err)
       showToast(err.message || 'Une erreur est survenue', 'error')
       setLoading(false)
     }

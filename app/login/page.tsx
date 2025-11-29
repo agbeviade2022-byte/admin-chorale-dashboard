@@ -38,11 +38,9 @@ function LoginForm() {
 
       showToast('Connexion réussie !', 'success')
       
-      // Rediriger avec rechargement complet pour que le middleware SSR lise les cookies
+      // Redirection rapide côté client
       const redirect = searchParams.get('redirect') || '/dashboard'
-      
-      // Force un rechargement complet - le middleware SSR va lire les nouveaux cookies
-      window.location.href = redirect
+      router.push(redirect)
     } catch (err: any) {
       showToast(err.message || 'Une erreur est survenue', 'error')
       setLoading(false)

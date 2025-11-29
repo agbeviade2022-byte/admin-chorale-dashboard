@@ -110,52 +110,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     try {
-      // 1. Authentification avec Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Timeout de 10 secondes pour éviter les blocages
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connexion trop lente. Veuillez réessayer.')), 10000)
       })
 
-      if (error) throw error
+      const authPromise = async () => {
+        // 1. Authentification avec Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-      if (!data.user) {
-        throw new Error('Session invalide après connexion')
+        if (error) throw error
+        if (!data.user) throw new Error('Session invalide')
+
+        // 2. Récupérer le profil
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, user_id, full_name, role, email, chorale_id, statut_validation')
+          .eq('user_id', data.user.id)
+          .single()
+
+        if (profileError || !profileData) {
+          await supabase.auth.signOut()
+          throw new Error('Profil introuvable')
+        }
+
+        // 3. Vérifier le rôle admin
+        if (!['admin', 'super_admin'].includes(profileData.role)) {
+          await supabase.auth.signOut()
+          throw new Error('Accès refusé : vous n\'êtes pas administrateur')
+        }
+
+        // 4. Mettre à jour l'état
+        setUser(data.user)
+        setProfile(profileData as UserProfile)
+
+        return { error: null }
       }
 
-      // 2. Récupérer le profil directement (sans RPC)
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', data.user.id)
-        .single()
-
-      if (profileError || !profileData) {
-        await supabase.auth.signOut()
-        throw new Error('Impossible de récupérer le profil utilisateur')
-      }
-
-      // 3. Vérifier que l'utilisateur est admin ou super_admin
-      if (profileData.role !== 'admin' && profileData.role !== 'super_admin') {
-        await supabase.auth.signOut()
-        throw new Error('Accès refusé : vous n\'êtes pas administrateur')
-      }
-
-      // 4. Vérifier le statut de validation
-      if (profileData.statut_validation === 'refuse') {
-        await supabase.auth.signOut()
-        throw new Error('Accès refusé : votre compte a été refusé')
-      }
-
-      if (profileData.statut_validation === 'en_attente') {
-        await supabase.auth.signOut()
-        throw new Error('Votre compte est en attente de validation')
-      }
-
-      // 5. Tout est OK - mettre à jour l'état
-      setUser(data.user)
-      setProfile(profileData)
-
-      return { error: null }
+      // Race entre le timeout et l'auth
+      return await Promise.race([authPromise(), timeoutPromise]) as { error: null }
     } catch (error) {
       return { error: error as Error }
     }

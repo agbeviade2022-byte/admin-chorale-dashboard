@@ -1,24 +1,34 @@
+'use client'
+import { useEffect, useState } from 'react'
 import { Building2, Users, Music, Activity } from 'lucide-react'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { supabase } from '@/lib/supabase'
 
-// Server Component - données chargées côté serveur, ZÉRO chargement côté client
-export default async function DashboardPage() {
-  const supabase = createServerSupabaseClient()
-  
-  // Charger toutes les stats en parallèle côté serveur
-  const [choralesRes, activeChoralesRes, usersRes, chantsRes] = await Promise.all([
-    supabase.from('chorales').select('*', { count: 'exact', head: true }),
-    supabase.from('chorales').select('*', { count: 'exact', head: true }).eq('statut', 'actif'),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('chants').select('*', { count: 'exact', head: true })
-  ])
+export default function DashboardPage() {
+  const [stats, setStats] = useState({
+    chorales: 0,
+    users: 0,
+    chants: 0,
+    activeChorales: 0,
+  })
 
-  const stats = {
-    chorales: choralesRes.count || 0,
-    users: usersRes.count || 0,
-    chants: chantsRes.count || 0,
-    activeChorales: activeChoralesRes.count || 0,
-  }
+  useEffect(() => {
+    async function loadStats() {
+      const [choralesRes, activeChoralesRes, usersRes, chantsRes] = await Promise.all([
+        supabase.from('chorales').select('*', { count: 'exact', head: true }),
+        supabase.from('chorales').select('*', { count: 'exact', head: true }).eq('statut', 'actif'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('chants').select('*', { count: 'exact', head: true })
+      ])
+
+      setStats({
+        chorales: choralesRes.count || 0,
+        users: usersRes.count || 0,
+        chants: chantsRes.count || 0,
+        activeChorales: activeChoralesRes.count || 0,
+      })
+    }
+    loadStats()
+  }, [])
 
   return (
     <div className="p-8">

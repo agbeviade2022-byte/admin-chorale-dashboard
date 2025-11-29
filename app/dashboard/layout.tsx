@@ -1,30 +1,49 @@
+'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import Sidebar from '@/components/Sidebar'
 import NotificationBell from '@/components/NotificationBell'
 
-// Server Component Layout - Auth vérifiée par middleware, pas de loading
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // Le middleware garantit que seuls les utilisateurs authentifiés arrivent ici
-  // Pas besoin de vérification côté client = ZÉRO loading
-  
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    // Rediriger si non connecté (après chargement)
+    if (!loading && !user) {
+      router.push('/login')
+    }
+  }, [user, loading, router])
+
+  // Écran de chargement minimal pendant la vérification
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  // Pas de user = ne rien afficher (redirection en cours)
+  if (!user) {
+    return null
+  }
+
   return (
     <div className="flex">
       <Sidebar />
       <div className="flex-1 bg-gray-100 min-h-screen">
-        {/* Header avec cloche de notification */}
         <header className="bg-white shadow-sm sticky top-0 z-30">
           <div className="flex items-center justify-end px-8 py-4">
             <NotificationBell />
           </div>
         </header>
-        
-        {/* Contenu principal */}
-        <main>
-          {children}
-        </main>
+        <main>{children}</main>
       </div>
     </div>
   )

@@ -1,16 +1,32 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+'use client'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import ChoralesClient from './ChoralesClient'
 
-// Server Component - données chargées côté serveur, ZÉRO loading
-export default async function ChoralesPage() {
-  const supabase = createServerSupabaseClient()
-  
-  // Charger les chorales côté serveur
-  const { data } = await supabase
-    .from('chorales')
-    .select('*')
-    .order('created_at', { ascending: false })
+export default function ChoralesPage() {
+  const [chorales, setChorales] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Passer les données pré-chargées au Client Component
-  return <ChoralesClient initialChorales={data || []} />
+  useEffect(() => {
+    async function loadChorales() {
+      const { data } = await supabase
+        .from('chorales')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      setChorales(data || [])
+      setLoading(false)
+    }
+    loadChorales()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="p-8 flex justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  return <ChoralesClient initialChorales={chorales} />
 }

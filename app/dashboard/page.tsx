@@ -1,68 +1,23 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Building2, Users, Music, Activity } from 'lucide-react'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
-export default function DashboardPage() {
-  const [stats, setStats] = useState({
-    chorales: 0,
-    users: 0,
-    chants: 0,
-    activeChorales: 0,
-  })
-  const [loading, setLoading] = useState(true)
+// Server Component - données chargées côté serveur, ZÉRO chargement côté client
+export default async function DashboardPage() {
+  const supabase = createServerSupabaseClient()
+  
+  // Charger toutes les stats en parallèle côté serveur
+  const [choralesRes, activeChoralesRes, usersRes, chantsRes] = await Promise.all([
+    supabase.from('chorales').select('*', { count: 'exact', head: true }),
+    supabase.from('chorales').select('*', { count: 'exact', head: true }).eq('statut', 'actif'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('chants').select('*', { count: 'exact', head: true })
+  ])
 
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  async function loadStats() {
-    try {
-      // Essayer d'utiliser la vue matérialisée (plus rapide)
-      const { data: statsData, error: statsError } = await supabase
-        .from('dashboard_stats')
-        .select('*')
-        .single()
-
-      if (!statsError && statsData) {
-        // Utiliser les stats de la vue matérialisée
-        setStats({
-          chorales: statsData.total_chorales || 0,
-          users: statsData.total_users || 0,
-          chants: statsData.total_chants || 0,
-          activeChorales: statsData.chorales_actives || 0,
-        })
-      } else {
-        // Fallback: requêtes COUNT séparées
-        console.warn('Vue matérialisée non disponible, utilisation des COUNT')
-        
-        const [chorales, activeChorales, users, chants] = await Promise.all([
-          supabase.from('chorales').select('*', { count: 'exact', head: true }),
-          supabase.from('chorales').select('*', { count: 'exact', head: true }).eq('statut', 'actif'),
-          supabase.from('profiles').select('*', { count: 'exact', head: true }),
-          supabase.from('chants').select('*', { count: 'exact', head: true })
-        ])
-
-        setStats({
-          chorales: chorales.count || 0,
-          users: users.count || 0,
-          chants: chants.count || 0,
-          activeChorales: activeChorales.count || 0,
-        })
-      }
-    } catch (error) {
-      console.error('Erreur:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">Chargement...</div>
-      </div>
-    )
+  const stats = {
+    chorales: choralesRes.count || 0,
+    users: usersRes.count || 0,
+    chants: chantsRes.count || 0,
+    activeChorales: activeChoralesRes.count || 0,
   }
 
   return (

@@ -1,53 +1,64 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-// Routes publiques (accessibles sans authentification)
-const publicRoutes = ['/login']
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-// Routes protégées (nécessitent authentification)
-const protectedRoutes = ['/dashboard']
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options })
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          })
+          response.cookies.set({ name, value, ...options })
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options })
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          })
+          response.cookies.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
 
-export function middleware(request: NextRequest) {
+  // Rafraîchir la session si nécessaire
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { pathname } = request.nextUrl
-  
-  // Vérifier si la route est protégée
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
-  
-  // Récupérer le token depuis les cookies Supabase
-  // Supabase utilise plusieurs cookies, cherchons-les tous
-  const supabaseAuthToken = request.cookies.get('sb-access-token')?.value ||
-                           request.cookies.get('supabase-auth-token')?.value ||
-                           request.cookies.getAll().find(cookie => 
-                             cookie.name.includes('sb-') && cookie.name.includes('auth-token')
-                           )?.value
-  
-  // Pour le développement, on laisse passer si on ne trouve pas de cookie
-  // L'AuthContext gérera la vérification côté client
-  if (isProtectedRoute && !supabaseAuthToken) {
-    // En développement, laisser passer et laisser AuthContext gérer
-    // Le middleware Next.js Edge ne peut pas accéder à Supabase facilement
-    console.log('Middleware: Pas de token trouvé, mais on laisse passer pour AuthContext')
+
+  // Routes protégées
+  if (pathname.startsWith('/dashboard')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
   }
-  
-  // Ajouter des headers de sécurité supplémentaires
-  const response = NextResponse.next()
-  
+
+  // Si connecté et sur /login, rediriger vers dashboard
+  if (pathname === '/login' && user) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Headers de sécurité
   response.headers.set('X-Robots-Tag', 'noindex, nofollow')
-  
+
   return response
 }
 
-// Configuration du matcher
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

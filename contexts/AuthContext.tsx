@@ -1,5 +1,5 @@
 'use client'
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 
@@ -29,14 +29,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const initialized = useRef(false)
 
   useEffect(() => {
-    // Vérifier la session au chargement
-    checkUser()
+    // Éviter la double initialisation (React StrictMode)
+    if (initialized.current) return
+    initialized.current = true
+
+    // Timeout de sécurité : max 3 secondes de chargement
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 3000)
+
+    // Vérifier la session rapidement
+    checkUser().finally(() => {
+      clearTimeout(timeout)
+    })
 
     // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Ne pas recharger le profil si on vient de faire signIn
+        if (event === 'SIGNED_IN' && user && profile) {
+          return
+        }
+        
         setUser(session?.user ?? null)
         
         if (session?.user) {
@@ -56,22 +73,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function checkUser() {
     try {
-      // Si l'utilisateur et le profil sont déjà en mémoire (ex: après signIn),
-      // éviter de refaire un aller-retour complet vers Supabase.
-      if (user && profile) {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        // Pas de session = pas connecté, fin du chargement
         setLoading(false)
         return
       }
 
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      setUser(session.user)
       
-      if (session?.user) {
-        await loadProfile(session.user.id)
-      }
+      // Charger le profil en parallèle (ne bloque pas l'affichage)
+      loadProfile(session.user.id).finally(() => {
+        setLoading(false)
+      })
     } catch (error) {
-      console.error('Error checking user:', error)
-    } finally {
       setLoading(false)
     }
   }

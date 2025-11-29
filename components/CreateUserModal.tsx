@@ -80,18 +80,24 @@ export default function CreateUserModal({
         throw new Error("L'email est requis");
       }
 
-      // Appel de la fonction RPC admin_create_user (à créer côté SQL)
-      const { error: rpcError } = await supabase.rpc("admin_create_user", {
-        p_email: formData.email.trim(),
-        p_full_name: formData.full_name.trim(),
-        p_role: formData.role,
-        p_chorale_id: formData.chorale_id || null,
-      });
+      // Créer le profil directement (l'utilisateur devra s'inscrire via l'app)
+      const { error: insertError } = await supabase
+        .from("profiles")
+        .insert({
+          full_name: formData.full_name.trim(),
+          email: formData.email.trim(),
+          role: formData.role,
+          chorale_id: formData.chorale_id || null,
+          statut_validation: 'valide',
+          created_at: new Date().toISOString(),
+        });
 
-      if (rpcError) {
-        console.error("Erreur admin_create_user:", rpcError);
-        throw rpcError;
+      if (insertError) {
+        console.error("Erreur création profil:", insertError);
+        throw insertError;
       }
+      
+      alert("✅ Profil créé ! L'utilisateur devra s'inscrire avec cet email.");
 
       onSuccess();
       handleClose();

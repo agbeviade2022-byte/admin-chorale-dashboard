@@ -36,15 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (initialized.current) return
     initialized.current = true
 
-    // Timeout de sécurité : max 3 secondes de chargement
-    const timeout = setTimeout(() => {
-      setLoading(false)
-    }, 3000)
-
-    // Vérifier la session rapidement
-    checkUser().finally(() => {
-      clearTimeout(timeout)
-    })
+    // Vérifier la session immédiatement
+    checkUser()
 
     // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -76,17 +69,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.user) {
-        // Pas de session = pas connecté, fin du chargement
         setLoading(false)
         return
       }
 
+      // Mettre à jour user ET charger profil en parallèle
       setUser(session.user)
       
-      // Charger le profil en parallèle (ne bloque pas l'affichage)
-      loadProfile(session.user.id).finally(() => {
-        setLoading(false)
-      })
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id, user_id, full_name, role, email, chorale_id, statut_validation')
+        .eq('user_id', session.user.id)
+        .single()
+      
+      if (profileData) {
+        setProfile(profileData as UserProfile)
+      }
+      setLoading(false)
     } catch (error) {
       setLoading(false)
     }

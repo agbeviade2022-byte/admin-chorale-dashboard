@@ -10,30 +10,22 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, loading } = useAuth()
+  const { user, profile, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    // Rediriger si non connecté (après chargement)
-    if (!loading && !user) {
+    // Rediriger si non connecté et pas de profil caché
+    if (!loading && !user && !profile) {
       router.push('/login')
     }
-  }, [user, loading, router])
+  }, [user, profile, loading, router])
 
-  // Écran de chargement minimal pendant la vérification
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    )
-  }
-
-  // Pas de user = ne rien afficher (redirection en cours)
-  if (!user) {
+  // Si pas de profil (ni user ni cache) = redirection en cours
+  if (!profile && !user && !loading) {
     return null
   }
 
+  // TOUJOURS afficher le contenu immédiatement si on a un profil (même caché)
   return (
     <div className="flex">
       <Sidebar />

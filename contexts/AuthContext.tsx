@@ -25,18 +25,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Clé pour le cache du profil
+const PROFILE_CACHE_KEY = 'chorale_profile_cache'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Charger le profil caché immédiatement (synchrone = INSTANT)
+  const getCachedProfile = (): UserProfile | null => {
+    if (typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(PROFILE_CACHE_KEY)
+      return cached ? JSON.parse(cached) : null
+    } catch {
+      return null
+    }
+  }
+
+  const cachedProfile = getCachedProfile()
+  
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<UserProfile | null>(cachedProfile)
+  // Si profil caché existe, ne pas bloquer avec loading
+  const [loading, setLoading] = useState(!cachedProfile)
   const initialized = useRef(false)
 
   useEffect(() => {
-    // Éviter la double initialisation (React StrictMode)
     if (initialized.current) return
     initialized.current = true
 
-    // Vérifier la session immédiatement
+    // Vérifier la session async (mais UI déjà affichée si hasSession)
     checkUser()
 
     // Écouter les changements d'authentification
@@ -69,11 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.user) {
+        // Session invalide - vider le cache
+        setProfile(null)
+        localStorage.removeItem(PROFILE_CACHE_KEY)
         setLoading(false)
         return
       }
 
-      // Mettre à jour user ET charger profil en parallèle
+      // Session valide - mettre à jour user
       setUser(session.user)
       
       const { data: profileData } = await supabase
@@ -84,6 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (profileData) {
         setProfile(profileData as UserProfile)
+        // Sauvegarder en cache pour affichage instantané au prochain refresh
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profileData))
       }
       setLoading(false)
     } catch (error) {
@@ -142,9 +163,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Accès refusé : vous n\'êtes pas administrateur')
         }
 
-        // 4. Mettre à jour l'état
+        // 4. Mettre à jour l'état et le cache
         setUser(data.user)
         setProfile(profileData as UserProfile)
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profileData))
 
         return { error: null }
       }
@@ -160,6 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
+    // Vider le cache
+    localStorage.removeItem(PROFILE_CACHE_KEY)
   }
 
   async function refreshProfile() {

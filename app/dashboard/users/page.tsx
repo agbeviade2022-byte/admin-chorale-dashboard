@@ -5,11 +5,9 @@ import UsersClient from './UsersClient'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadUsers() {
-      // Essayer la vue optimisée d'abord
       const { data, error } = await supabase
         .from('users_with_emails')
         .select('*')
@@ -18,7 +16,6 @@ export default function UsersPage() {
       if (!error && data) {
         setUsers(data)
       } else {
-        // Fallback sur profiles
         const { data: profiles } = await supabase
           .from('profiles')
           .select('*')
@@ -27,18 +24,10 @@ export default function UsersPage() {
         
         setUsers(profiles || [])
       }
-      setLoading(false)
     }
     loadUsers()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="p-8 flex justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    )
-  }
-
+  // Affichage IMMÉDIAT - pas de loading
   return <UsersClient initialUsers={users} />
 }

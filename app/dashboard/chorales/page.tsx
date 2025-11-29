@@ -14,13 +14,19 @@ export default function ChoralesPage() {
     if (!user) return
     
     const loadChorales = async () => {
+      // Récupérer les chorales avec le compte des membres
       const { data, error } = await supabase
         .from('chorales')
-        .select('*')
+        .select('*, profiles(count)')
         .order('created_at', { ascending: false })
       
       if (!error && data) {
-        setChorales(data)
+        // Transformer pour ajouter nb_membres
+        const choralesWithCount = data.map(c => ({
+          ...c,
+          nb_membres: c.profiles?.[0]?.count || 0
+        }))
+        setChorales(choralesWithCount)
       }
     }
     

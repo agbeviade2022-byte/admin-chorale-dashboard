@@ -56,6 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function checkUser() {
     try {
+      // Si l'utilisateur et le profil sont déjà en mémoire (ex: après signIn),
+      // éviter de refaire un aller-retour complet vers Supabase.
+      if (user && profile) {
+        setLoading(false)
+        return
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
       
@@ -87,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     try {
+      // 1. Authentification avec Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -94,40 +102,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
-      // Vérifier le profil et le rôle
-      if (data.user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .single()
-
-        if (profileError || !profileData) {
-          await supabase.auth.signOut()
-          throw new Error('Impossible de récupérer le profil utilisateur')
-        }
-
-        // Vérifier que l'utilisateur est admin ou super_admin
-        if (profileData.role !== 'admin' && profileData.role !== 'super_admin') {
-          await supabase.auth.signOut()
-          throw new Error('Accès refusé : vous n\'êtes pas administrateur')
-        }
-
-        // Vérifier le statut de validation
-        if (profileData.statut_validation === 'refuse') {
-          await supabase.auth.signOut()
-          throw new Error('Accès refusé : votre compte a été refusé')
-        }
-
-        if (profileData.statut_validation === 'en_attente') {
-          await supabase.auth.signOut()
-          throw new Error('Votre compte est en attente de validation')
-        }
-
-        // Mettre à jour l'état immédiatement
-        setUser(data.user)
-        setProfile(profileData)
+      if (!data.user) {
+        throw new Error('Session invalide après connexion')
       }
+
+      // 2. Récupérer le profil directement (sans RPC)
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', data.user.id)
+        .single()
+
+      if (profileError || !profileData) {
+        await supabase.auth.signOut()
+        throw new Error('Impossible de récupérer le profil utilisateur')
+      }
+
+      // 3. Vérifier que l'utilisateur est admin ou super_admin
+      if (profileData.role !== 'admin' && profileData.role !== 'super_admin') {
+        await supabase.auth.signOut()
+        throw new Error('Accès refusé : vous n\'êtes pas administrateur')
+      }
+
+      // 4. Vérifier le statut de validation
+      if (profileData.statut_validation === 'refuse') {
+        await supabase.auth.signOut()
+        throw new Error('Accès refusé : votre compte a été refusé')
+      }
+
+      if (profileData.statut_validation === 'en_attente') {
+        await supabase.auth.signOut()
+        throw new Error('Votre compte est en attente de validation')
+      }
+
+      // 5. Tout est OK - mettre à jour l'état
+      setUser(data.user)
+      setProfile(profileData)
 
       return { error: null }
     } catch (error) {

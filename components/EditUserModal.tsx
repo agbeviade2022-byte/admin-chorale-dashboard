@@ -36,7 +36,6 @@ export default function EditUserModal({ isOpen, user, onClose, onSuccess }: Edit
 
   useEffect(() => {
     if (isOpen && user) {
-      console.log('🔍 EditUserModal ouvert avec user:', user)
       setFormData({
         full_name: user.full_name || '',
         role: user.role || 'user',
@@ -62,10 +61,8 @@ export default function EditUserModal({ isOpen, user, onClose, onSuccess }: Edit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('📝 handleSubmit appelé - user:', user, 'formData:', formData)
     
     if (!user) {
-      console.error('❌ Pas d\'utilisateur sélectionné')
       return
     }
 
@@ -77,8 +74,6 @@ export default function EditUserModal({ isOpen, user, onClose, onSuccess }: Edit
       if (!formData.full_name.trim()) {
         throw new Error('Le nom est requis')
       }
-      
-      console.log('✅ Validation OK, début de la mise à jour...')
 
       // Vérifier si le rôle a changé
       const roleChanged = user.role !== formData.role
@@ -128,7 +123,6 @@ export default function EditUserModal({ isOpen, user, onClose, onSuccess }: Edit
 
       // Mettre à jour le profil
       const userId = (user as any).user_id || user.id
-      console.log('💾 Mise à jour du profil - userId:', userId, 'formData:', formData)
       
       const { error: updateError } = await supabase
         .from('profiles')
@@ -140,11 +134,8 @@ export default function EditUserModal({ isOpen, user, onClose, onSuccess }: Edit
         .eq('user_id', userId)
 
       if (updateError) {
-        console.error('❌ Erreur de mise à jour:', updateError)
         throw updateError
       }
-      
-      console.log('✅ Mise à jour réussie !')
 
       // Message de succès selon le changement
       if (roleChanged) {
@@ -166,14 +157,11 @@ export default function EditUserModal({ isOpen, user, onClose, onSuccess }: Edit
       }
 
       // Succès
-      console.log('🎉 Appel de onSuccess() et fermeture du modal')
       onSuccess()
       handleClose()
     } catch (err: any) {
-      console.error('❌ Erreur attrapée:', err)
       setError(err.message || 'Erreur lors de la modification')
     } finally {
-      console.log('🏁 Fin de handleSubmit - loading:', false)
       setLoading(false)
     }
   }
@@ -344,7 +332,6 @@ export default function EditUserModal({ isOpen, user, onClose, onSuccess }: Edit
             </button>
             <button
               type="submit"
-              onClick={() => console.log('🖱️ Bouton Enregistrer cliqué')}
               className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50"
               disabled={loading}
             >

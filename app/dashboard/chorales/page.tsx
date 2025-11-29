@@ -28,29 +28,9 @@ export default function ChoralesPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-
-      // Récupérer le nombre de membres et chants pour chaque chorale
-      const choralesWithStats = await Promise.all(
-        (data || []).map(async (chorale) => {
-          const [membresResult, chantsResult] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('id', { count: 'exact', head: true })
-              .eq('chorale_id', chorale.id),
-            supabase
-              .from('chants')
-              .select('id', { count: 'exact', head: true })
-          ])
-
-          return {
-            ...chorale,
-            nb_membres: membresResult.count || 0,
-            nb_chants: chantsResult.count || 0
-          }
-        })
-      )
-
-      setChorales(choralesWithStats)
+      // Pour les performances, on ne calcule plus les stats détaillées ici
+      // On se contente de la liste des chorales
+      setChorales(data || [])
     } catch (error) {
       console.error('Erreur:', error)
     } finally {

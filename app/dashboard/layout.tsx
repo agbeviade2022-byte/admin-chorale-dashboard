@@ -21,15 +21,22 @@ export default function DashboardLayout({
     }
   }, [user, loading, router])
 
-  // Pendant la vérification d'authentification, ne rien afficher
-  // (évite l'écran intermédiaire "Vérification de l'authentification...")
+  // Pendant la vérification d'authentification, afficher un écran de chargement
   if (loading) {
-    return null
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-gray-700 text-lg">Chargement de votre session...</div>
+      </div>
+    )
   }
 
-  // Si pas d'utilisateur, ne rien afficher (redirection en cours)
+  // Si pas d'utilisateur, afficher un écran de redirection (évite la page blanche)
   if (!user || !profile) {
-    return null
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-gray-700 text-lg">Redirection vers la page de connexion...</div>
+      </div>
+    )
   }
 
   return (

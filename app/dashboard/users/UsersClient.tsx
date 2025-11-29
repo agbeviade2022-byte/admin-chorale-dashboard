@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Users, Search, Shield, User, Plus } from 'lucide-react'
 import EditUserModal from '@/components/EditUserModal'
 import DeleteUserModal from '@/components/DeleteUserModal'
@@ -22,7 +22,12 @@ interface UsersClientProps {
 }
 
 export default function UsersClient({ initialUsers }: UsersClientProps) {
-  const [users] = useState<UserProfile[]>(initialUsers)
+  const [users, setUsers] = useState<UserProfile[]>(initialUsers)
+  
+  // Mettre à jour quand les props changent
+  useEffect(() => {
+    setUsers(initialUsers)
+  }, [initialUsers])
   const [searchTerm, setSearchTerm] = useState('')
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)

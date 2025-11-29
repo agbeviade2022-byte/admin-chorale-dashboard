@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Building2, Users, Music, Plus, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -13,7 +13,12 @@ interface ChoralesClientProps {
 }
 
 export default function ChoralesClient({ initialChorales }: ChoralesClientProps) {
-  const [chorales] = useState<Chorale[]>(initialChorales)
+  const [chorales, setChorales] = useState<Chorale[]>(initialChorales)
+  
+  // Mettre à jour quand les props changent
+  useEffect(() => {
+    setChorales(initialChorales)
+  }, [initialChorales])
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)

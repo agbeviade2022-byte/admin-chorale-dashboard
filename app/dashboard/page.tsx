@@ -1,33 +1,25 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { Building2, Users, Music, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+type Stats = { chorales: number; users: number; chants: number; activeChorales: number }
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState({
-    chorales: 0,
-    users: 0,
-    chants: 0,
-    activeChorales: 0,
-  })
+  const [stats, setStats] = useState<Stats>({ chorales: 0, users: 0, chants: 0, activeChorales: 0 })
 
   useEffect(() => {
-    async function loadStats() {
-      const [choralesRes, activeChoralesRes, usersRes, chantsRes] = await Promise.all([
+    const load = async () => {
+      const [c1, c2, u, ch] = await Promise.all([
         supabase.from('chorales').select('*', { count: 'exact', head: true }),
         supabase.from('chorales').select('*', { count: 'exact', head: true }).eq('statut', 'actif'),
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('chants').select('*', { count: 'exact', head: true })
       ])
-
-      setStats({
-        chorales: choralesRes.count || 0,
-        users: usersRes.count || 0,
-        chants: chantsRes.count || 0,
-        activeChorales: activeChoralesRes.count || 0,
-      })
+      setStats({ chorales: c1.count || 0, users: u.count || 0, chants: ch.count || 0, activeChorales: c2.count || 0 })
     }
-    loadStats()
+    load()
   }, [])
 
   return (

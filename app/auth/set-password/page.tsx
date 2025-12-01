@@ -43,39 +43,58 @@ function SetPasswordContent() {
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
 
   useEffect(() => {
-    // Vérifier si on a un token valide dans l'URL (vient de l'email d'invitation)
+    // Vérifier si on a un token valide dans l'URL
     const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
+      // 1. Vérifier si on a déjà une session active
+      const { data: { session } } = await supabase.auth.getSession()
       
-      if (error || !session) {
-        // Essayer de récupérer la session depuis le hash de l'URL
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const accessToken = hashParams.get('access_token')
-        const refreshToken = hashParams.get('refresh_token')
-        
-        if (accessToken && refreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-          
-          if (sessionError) {
-            setIsValidToken(false)
-            setError('Lien invalide ou expiré. Demandez un nouveau lien à votre administrateur.')
-          } else {
-            setIsValidToken(true)
-          }
-        } else {
-          setIsValidToken(false)
-          setError('Lien invalide. Veuillez utiliser le lien reçu par email.')
-        }
-      } else {
+      if (session) {
         setIsValidToken(true)
+        return
       }
+
+      // 2. Essayer les query params (depuis notre email personnalisé)
+      const token = searchParams.get('token')
+      const type = searchParams.get('type')
+      const email = searchParams.get('email')
+      
+      if (token && type === 'recovery' && email) {
+        // Vérifier le token de récupération via Supabase
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: token,
+          type: 'recovery',
+        })
+        
+        if (!verifyError) {
+          setIsValidToken(true)
+          return
+        }
+      }
+
+      // 3. Essayer le hash de l'URL (ancien format Supabase)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
+      
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        
+        if (!sessionError) {
+          setIsValidToken(true)
+          return
+        }
+      }
+
+      // Aucun token valide trouvé
+      setIsValidToken(false)
+      setError('Lien invalide ou expiré. Demandez un nouveau lien à votre administrateur.')
     }
     
     checkSession()
-  }, [])
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

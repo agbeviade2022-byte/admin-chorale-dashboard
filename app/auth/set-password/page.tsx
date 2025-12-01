@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
@@ -9,7 +9,29 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Composant principal (wrapper avec Suspense)
 export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <SetPasswordContent />
+    </Suspense>
+  )
+}
+
+// Écran de chargement
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+        <p className="mt-4 text-white">Chargement...</p>
+      </div>
+    </div>
+  )
+}
+
+// Contenu de la page
+function SetPasswordContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   

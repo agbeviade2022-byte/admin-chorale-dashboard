@@ -32,12 +32,12 @@ export default function SetPasswordPage() {
         const refreshToken = hashParams.get('refresh_token')
         
         if (accessToken && refreshToken) {
-          const { error: setError } = await supabase.auth.setSession({
+          const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           })
           
-          if (setError) {
+          if (sessionError) {
             setIsValidToken(false)
             setError('Lien invalide ou expiré. Demandez un nouveau lien à votre administrateur.')
           } else {
